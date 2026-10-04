@@ -64,12 +64,59 @@ def search_customers(name: str, limit: int = 10) -> list:
             "limit": min(limit, 20)
         }
     )
+ @mcp.tool()
+def search_customer_orders(customer_name: str, limit: int = 10) -> list:
+    """Search sales orders for an AKAL LAB customer."""
+    uid, models = odoo_connection()
+
+    partners = models.execute_kw(
+        ODOO_DB,
+        uid,
+        ODOO_API_KEY,
+        "res.partner",
+        "search_read",
+        [[["name", "ilike", customer_name]]],
+        {
+            "fields": ["id", "name"],
+            "limit": 10
+        }
+    )
+
+    if not partners:
+        return []
+
+    partner_ids = [partner["id"] for partner in partners]
+
+    orders = models.execute_kw(
+        ODOO_DB,
+        uid,
+        ODOO_API_KEY,
+        "sale.order",
+        "search_read",
+        [[["partner_id", "in", partner_ids]]],
+        {
+            "fields": [
+                "name",
+                "date_order",
+                "partner_id",
+                "amount_untaxed",
+                "amount_tax",
+                "amount_total",
+                "state",
+                "invoice_status"
+            ],
+            "limit": min(limit, 20),
+            "order": "date_order desc"
+        }
+    )
+
+    return orders
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
 
-    mcp.run(
+mcp.run(
         transport="streamable-http",
         host="0.0.0.0",
         port=port,
