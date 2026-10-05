@@ -64,7 +64,7 @@ def search_customers(name: str, limit: int = 10) -> list:
             "limit": min(limit, 20)
         }
     )
- @mcp.tool()
+@mcp.tool()
 def search_customer_orders(customer_name: str, limit: int = 10) -> list:
     """Search sales orders for an AKAL LAB customer."""
     uid, models = odoo_connection()
