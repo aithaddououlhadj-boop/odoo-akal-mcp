@@ -111,7 +111,63 @@ def search_customer_orders(customer_name: str, limit: int = 10) -> list:
     )
 
     return orders
+@mcp.tool()
+def search_orders(customer_name: str, limit: int = 10) -> list:
+    """Search sales orders by customer name, including order lines."""
+    uid, models = odoo_connection()
 
+    orders = models.execute_kw(
+        ODOO_DB,
+        uid,
+        ODOO_API_KEY,
+        "sale.order",
+        "search_read",
+        [[["partner_id.name", "ilike", customer_name]]],
+        {
+            "fields": [
+                "name",
+                "partner_id",
+                "date_order",
+                "amount_untaxed",
+                "amount_tax",
+                "amount_total",
+                "state",
+                "invoice_status",
+                "order_line"
+            ],
+            "limit": min(limit, 20),
+            "order": "date_order desc"
+        }
+    )
+
+    for order in orders:
+        line_ids = order.get("order_line", [])
+
+        if line_ids:
+            lines = models.execute_kw(
+                ODOO_DB,
+                uid,
+                ODOO_API_KEY,
+                "sale.order.line",
+                "read",
+                [line_ids],
+                {
+                    "fields": [
+                        "product_id",
+                        "name",
+                        "product_uom_qty",
+                        "price_unit",
+                        "price_subtotal"
+                    ]
+                }
+            )
+        else:
+            lines = []
+
+        order["lines"] = lines
+        order.pop("order_line", None)
+
+    return orders
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
